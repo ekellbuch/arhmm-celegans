@@ -13,7 +13,6 @@ def XY_resample(X, Y):
     # Xi = np.zeros([dim1, dim2], dtype=float) * np.nan
     Xi = np.zeros(shape=(dim1, dim2), dtype=float) * np.nan
     Yi = np.zeros(shape=(dim1, dim2), dtype=float) * np.nan
-    # Yi = np.zeros([dim1, dim2], dtype=float) * np.nan
     # Interpolate st dx is continuous
     for ii in range(0, dim2):
         if ii % 1000 == 0:
@@ -38,7 +37,6 @@ def nan_interpolate(Xin):
     X = np.copy(Xin)
     # interpolate all nan across worm
     dim1, dim2 = X.shape
-    # Xout = np.empty([dim1,dim2],dtype=float) * np.nan
     Xout = np.zeros(shape=(dim1, dim2), dtype=float) * np.nan
     t = np.arange(dim2)
     for ii in range(0, dim1):
@@ -57,13 +55,8 @@ def get_arc2angle(x, y):
     dx = np.diff(x, axis=1)
     dy = np.diff(y, axis=1)
     # account for discontinuity
-    # atan = np.vectorize(np.arctan2)
-    # angles = atan(dy,dx)
-    # angles = list(map(np.arctan2, dy, dx))
     angles = list(map(np.arctan2, dy, dx))
-    #angles = list(map(np.unwrap,angles))
-    #angles = np.apply_along_axis(np.unwrap,1,angles)
-    angles = np.unwrap(angles, axis=1) #-1) #-1)
+    angles = np.unwrap(angles, axis=1)
     #rotate angles st mean orientation is zero
     meanAngle = angles.mean(1, keepdims=True)
     AngleArray = angles - meanAngle
@@ -71,26 +64,14 @@ def get_arc2angle(x, y):
 
 def reconstructedAngle(eigenAmpsNoNaN,eigenWorms, numDimensions):
     """
-    skelX = np.zeros(shape=(numAngles+1, numFrames))
-    skelY = np.zeros(shape=(numAngles+1, numFrames))
-
-    reconstructedAngle=np.zeros(shape=(eigenWorms.shape[1],eigenAmpsNoNaN.shape[1]))
-    for j in np.arange(eigenAmpsNoNaN.shape[1]):
-        for k in np.arange(K1):
-            a = eigenAmpsNoNaN[k,j]*eigenWorms[k,:]
-            reconstructedAngle[:,j] = reconstructedAngle[:,j]+a.T
-
+    Reconstruct angle
     """
     reconstructedAngle = eigenWorms[:, :numDimensions].dot(eigenAmpsNoNaN[:numDimensions, :])
     return reconstructedAngle.T
 
 def angle2skel(angleArray, meanAngle, arclength):
     """
-    for frame in np.arange(numFrames):
-        skelX[:,frame] = np.insert(np.cumsum(
-        np.cos(angleArray[frame,:]+flatAngle[frame]) *arclength/numAngles),0,0)
-        skelY[:,frame] = np.insert(np.cumsum(
-        np.sin(angleArray[frame,:]+flatAngle[frame]) *arclength/numAngles),0,0)
+    From angleArray to skeleton
     """
     numAngles, numFrames = angleArray.T.shape
     skX0 = np.cumsum(np.cos(angleArray+meanAngle)*arclength/numAngles, axis=1)
@@ -119,8 +100,7 @@ def rotate_origin(x1, y1):
 
 
 def switch_state_ts(z, state=0, min_dur=30,delta=10):
-    # we want to draw aligned all which start at 0 
-    
+    # we want to draw aligned all which start at 0
     z2, dr = rle(z)
 
     duration=np.cumsum(dr)
