@@ -170,12 +170,12 @@ def state_correlation(z1,z2):
 
     avg_ind = np.sum(C_pr * np.arange(dim1)[:,None], axis=0)
     perm = np.argsort(avg_ind)
-    print(perm)
+    #print(perm)
     ends_ = (avg_ind==0).sum()
     new_l = perm.copy()
     new_l[0:dim2-ends_] = perm[ends_:]
     new_l[dim2-ends_:] = perm[0:ends_]
-    print(new_l)
+    #print(new_l)
     perm = new_l
     ax = fig.add_subplot(111)
     Cplot = C_pr # C
@@ -196,6 +196,6 @@ def state_correlation(z1,z2):
     plt.colorbar(im, cax=cax, orientation="horizontal", \
         spacing='uniform', format='%.2f',ticks=np.linspace(Cplot.min(),Cplot.max(),5))
     plt.tight_layout()
-    print(Cplot.sum(0).sum())
-    print(Cplot.sum(1).sum())
+    #print(Cplot.sum(0).sum())
+    #print(Cplot.sum(1).sum())
     return
