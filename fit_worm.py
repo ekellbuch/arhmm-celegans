@@ -1,4 +1,3 @@
-
 import os
 import time
 import gzip
@@ -64,7 +63,6 @@ def get_empirical_ar_params(train_datas, params):
     # Use the inferred noise covariance as the prior mean
     obs_params["S_0"] = obs_distn.sigma * (params["nu_0"] - datadimension - 1)
     obs_params["M_0"] = obs_distn.A.copy()
-
     return obs_params
 
 
@@ -105,7 +103,9 @@ def fit(name, model, test_data, N_iter=1000, init_state_seq=None):
 
 
 def make_joint_models(train_datas, Nmax = 10):
-    # Define a sequence of models
+    """
+    Define a sequence of models
+    """
     if isinstance(train_datas, list) and len(train_datas) > 0:
         data = train_datas
         num_worms = len(train_datas)
@@ -158,7 +158,7 @@ def make_joint_models(train_datas, Nmax = 10):
                 init_state_distn=init_state_distn,
                 # create A, Sigma
                 obs_distns=obs_distns,
-                kappa = kappa_a_0 # kappa
+                kappa = kappa_a_0
                 )
         # Add data of each worm
         for cworm in np.arange(num_worms):
@@ -236,7 +236,6 @@ def run_experiment():
             print ("")
         else:
             res = method(model_name, model, test_data, N_iter=N_iter)
-            # Store results
             with gzip.open(output_file, "w") as f:
                 print ("Saving results to: ", output_file)
                 pickle.dump(res, f, protocol=-1)

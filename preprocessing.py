@@ -4,15 +4,12 @@ import h5py
 import re
 import time
 
-# Other
-import tmputil as util
+import util_worm as util
 
 
 def eigenAmps_clean(eigenAmps):
     """
-    # drop leading and trailing NaN values
-    # (don't want to extrapolate to
-    # extreme values)
+    Remove leading/trailing NaNs
     """
     if np.isnan(eigenAmps[0,0]):
         # get the end of the starting NaN segment
@@ -20,7 +17,6 @@ def eigenAmps_clean(eigenAmps):
         np.where(eigenAmps[afternan:] == 1)[0][0]
         # drop these values
         eigenAmps[:, 0:nanEnd] = [];
-    # is the last point NaN?
     if np.isnan(eigenAmps[0, -1]):
         # get the start of the final NaN segment
         nanVals =np.where(np.isnan(eigenAmps[0, :]))[0]
@@ -33,12 +29,12 @@ def eigenAmps_clean(eigenAmps):
 
 def worm_covariance(angleArray):
     """
-    Each column is the eigenvector
+    Calculate covariance
+    where eigenvecs are the columns
     """
     ### Select timeframes (angles) without nan
     omit_rows = np.isnan(angleArray).sum(1)
-    print('We are going to omit {} angles'.format(
-        np.sum(omit_rows>1))) # rows which contain nans
+    print('Skipping %d angles'%(np.sum(omit_rows>1)))
     angleArrayNoNaN = angleArray[omit_rows<1,:]
     C = np.cov(angleArrayNoNaN.T)
     #plt.imshow(C,cmap='viridis')
@@ -49,31 +45,34 @@ def worm_covariance(angleArray):
     return eigval,eigvec
 
 
-def resample_data(fpath,X,Y):
-    # check if directory exists
+def resample_data(fpath,X,Y,fname_xyresampled='xy_resampled.npz'):
+    """
+    Resample X,Y
+    """
     if not os.path.isdir(fpath):
         os.mkdir(fpath)
-    ### Resample data
-    # check if file has been processed (data resampled?)
-    fname_xyresampled ='xy_resampled.npz'
 
-    if os.path.exists(os.path.join(fpath,fname_xyresampled)):
+    fpath = os.path.join(fpath,fname_xyresampled)
+    if os.path.exists(fpath):
         print('\nLoading resampled data from {}'.format(fpath))
-        Xi = np.load(os.path.join(fpath,fname_xyresampled))['Xi']
-        Yi = np.load(os.path.join(fpath,fname_xyresampled))['Yi']
+        Xi = np.load(fpath)['Xi']
+        Yi = np.load(fpath)['Yi']
     else:
         t0 = time.time()
         Xi,Yi = util.XY_resample(X,Y)
         t1 = time.time()
-        print('Run time {}'.format(t1-t0))
-        print('\nStoring resampled data in {}'.format(fpath))
-        np.savez(os.path.join(fpath,fname_xyresampled),Xi=Xi,Yi=Yi)
+        print('Run time of {}'.format(t1-t0))
+        print('\nStoring resampled data as %s'%(fpath))
+        np.savez(fpath,Xi=Xi,Yi=Yi)
     return Xi, Yi
 
 
-def extract_worm(fname_in, fname_dout,store_en=True,fname_pdata='pdata.npz'):
-
-    # check if file already exists:
+def extract_worm(fname_in, fname_dout,store_en=True,
+        fname_pdata='pdata.npz'):
+    """
+    Extract activity of single worm
+    """
+    # check if file exists:
     if os.path.isfile(os.path.join(fname_dout,fname_pdata)):
         print('File\n{}\nalready exists!\n'.format(
             os.path.join(fname_dout,fname_pdata)))
@@ -84,50 +83,43 @@ def extract_worm(fname_in, fname_dout,store_en=True,fname_pdata='pdata.npz'):
     print('Loading data {}'.format(fname_in))
     f = h5py.File(fname_in,'r')
 
-    ### get worm posture
+    # Get worm posture and length
     X = f['worm']['posture']['skeleton']['x'][()].T
     Y = f['worm']['posture']['skeleton']['y'][()].T
-
-    ### worm length
     meanL = np.nanmean(f['worm']['morphology']['length'])
 
-    # interpolate wrt angle array
-    # might have to look at video-tracking?
-    interp_pos = 1 # always
-
-    ### Resample data
+    # Resample data and normalize wrt length
     Xi,Yi = resample_data(fname_dout,X,Y)
-    ### Normalize worm wrt total length
     Xi, Yi =Xi/meanL , Yi/meanL
 
-    ### Interpolate the positions to find the angle array
-    if interp_pos:
+    # Interpolate each position
+    if True:
         x = util.nan_interpolate(Yi)
         y = util.nan_interpolate(Xi)
     else:
         x , y = Xi, Yi
 
-    ### Get tangent angle for each frame and rotate to have zero mean angle
+    # Get angle from x,y coordinates (zero mean angle)
     angleArray, meanAngles = util.get_arc2angle(x.T,y.T)
-    ### ROTATE WORM if the worm in the ventral vs dorsal (invert all angles)
+    # Rotate worm wrt ventral vs dorsal (invert all angles)
     if '--L_--' in fname_dout:
         angleArray = angleArray*-1
 
-    ### Calculate C(s,s'), eigvectors and eigvals and sort them
+    # Apply PCA to angle covariance
     eigval, eigvec = worm_covariance(angleArray)
 
-    ### Calculate amplitudes of motion along PCs
+    # Calculate amplitudes of motion along PCs
     # Projections of worm shape (angle) onto the low dim space of eigenworms
     eigenAmps = np.dot(eigvec.T,angleArray.T)
 
-    ### Clean eigenAmps
+    # Remove nans and normalize
     eigenAmpsNoNaN = eigenAmps_clean(eigenAmps)
-    ### Normalize
     au = util.eig_normalization(eigenAmpsNoNaN)
 
     if store_en:
-        np.savez(os.path.join(fname_dout,fname_pdata), au=au, eigval=eigval,
-                x=x, y=y, eigvec=eigvec, angleArray=angleArray, meanAngles=meanAngles,
+        np.savez(os.path.join(fname_dout,fname_pdata),
+                au=au, eigval=eigval,x=x, y=y,
+                eigvec=eigvec, angleArray=angleArray,
+                meanAngles=meanAngles,
                 eigenAmpsNoNaN=eigenAmpsNoNaN)
-
     return  au
