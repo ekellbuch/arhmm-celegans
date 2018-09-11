@@ -13,10 +13,7 @@ List of input files:
 * andre_ftp_matfiles.txt : List of files
 
 Jupyter Notebooks:
-* F1-Select-worms : Select worms
-* F2-Preprocess-worms : Preprocess worms following Stephens et al., 2008.
-* F3-Fit-all-worms-once : Fit all worms at once
-* F4-Make_final_plots : Make plots from results
+* Paper_figures : Make plots from results
 
 Run Experiments (run between F3 and F4):
 * fit_worm10.py :
